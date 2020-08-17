@@ -7,14 +7,21 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"strings"
 )
 
-type client chan<- string
+type client struct {
+	ip     string
+	name   string
+	extra  string
+	tunnel chan<- string
+}
 
 var (
 	entering = make(chan client)
 	leaving  = make(chan client)
-	messages = make(chan string)
+	message  = make(chan string)
+	clients  = make(map[client]bool)
 )
 
 func main() {
@@ -34,19 +41,18 @@ func main() {
 }
 
 func broadcast() {
-	clients := make(map[client]bool)
 	for {
 		select {
-		case msg := <-messages:
+		case msg := <-message:
 			logWriter(msg)
 			for cli := range clients {
-				cli <- msg
+				cli.tunnel <- msg
 			}
 		case cli := <-entering:
 			clients[cli] = true
 		case cli := <-leaving:
 			delete(clients, cli)
-			close(cli)
+			close(cli.tunnel)
 		}
 	}
 }
@@ -54,25 +60,42 @@ func broadcast() {
 func handleConn(conn net.Conn) {
 	ch := make(chan string)
 	go clientWriter(conn, ch)
-	who := conn.RemoteAddr().String()
-	ch <- "You are " + who
-	messages <- who + " " + "has arrived"
-	entering <- ch
+	src := conn.RemoteAddr().String()
+	cli := client{ip: src, name: src, tunnel: ch}
+	entering <- cli
 	input := bufio.NewScanner(conn)
 	for input.Scan() {
-		messages <- who + "  " + input.Text()
+		msg := input.Text()
+		if strings.HasPrefix(msg, "/") {
+			handleOrder(&cli, msg)
+			continue
+		}
+		message <- fmt.Sprintf("[%s]:  %s", cli.name, msg)
 	}
-
-	leaving <- ch
-	messages <- who + " has left"
+	leaving <- cli
+	message <- cli.name + " is dead!"
 	conn.Close()
 }
+
+func handleOrder(cli *client, msg string) {
+	if strings.HasPrefix(msg, "/name") {
+		val := new(string)
+		fmt.Sscanf(msg, "/name%s", val)
+		if *val == "" {
+			cli.tunnel <- "cmdErr: /name"
+		} else {
+			cli.name = *val
+			cli.tunnel <- "your name is " + cli.name
+			message <- cli.name + " has arrived!"
+		}
+	}
+}
+
 func clientWriter(conn net.Conn, ch <-chan string) {
 	for msg := range ch {
 		fmt.Fprintln(conn, msg)
 	}
 }
-
 func logWriter(msg string) {
 	log.Printf("%s", msg)
 }

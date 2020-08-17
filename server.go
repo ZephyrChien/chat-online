@@ -3,6 +3,7 @@
 package main
 
 import (
+	"flag"
 	"bufio"
 	"fmt"
 	"log"
@@ -24,8 +25,18 @@ var (
 	clients  = make(map[client]bool)
 )
 
+var (
+	port=flag.Int("p",8000,"source port")
+	source=flag.String("s","0.0.0.0","source address")
+	host string
+)
+
+func init(){
+	flag.Parse()
+	host=fmt.Sprintf("%s:%d",*source,*port)
+}
 func main() {
-	listener, err := net.Listen("tcp", "localhost:8000")
+	listener, err := net.Listen("tcp", host)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -51,8 +62,8 @@ func broadcast() {
 		case cli := <-entering:
 			clients[cli] = true
 		case cli := <-leaving:
-			delete(clients, cli)
 			close(cli.tunnel)
+			delete(clients, cli)
 		}
 	}
 }
@@ -63,6 +74,8 @@ func handleConn(conn net.Conn) {
 	src := conn.RemoteAddr().String()
 	cli := client{ip: src, name: src, tunnel: ch}
 	entering <- cli
+	logWriter(cli.ip)
+
 	input := bufio.NewScanner(conn)
 	for input.Scan() {
 		msg := input.Text()
@@ -70,24 +83,30 @@ func handleConn(conn net.Conn) {
 			handleOrder(&cli, msg)
 			continue
 		}
-		message <- fmt.Sprintf("[%s]:  %s", cli.name, msg)
+		message <- fmt.Sprintf("[%s]  %s", cli.name, msg)
 	}
 	leaving <- cli
-	message <- cli.name + " is dead!"
+	message <- fmt.Sprintf("[world]  %s is dead!", cli.name)
 	conn.Close()
 }
 
 func handleOrder(cli *client, msg string) {
-	if strings.HasPrefix(msg, "/name") {
+	switch {
+	case strings.HasPrefix(msg, "/name"):
 		val := new(string)
 		fmt.Sscanf(msg, "/name%s", val)
 		if *val == "" {
 			cli.tunnel <- "cmdErr: /name"
 		} else {
+			delete(clients, *cli)
 			cli.name = *val
+			entering <- *cli //sync map
 			cli.tunnel <- "your name is " + cli.name
-			message <- cli.name + " has arrived!"
+			message <- fmt.Sprintf("[world]  %s has arrived!", cli.name)
+			logWriter(fmt.Sprintln(cli.ip,"=", cli.name))
 		}
+	default:
+		cli.tunnel <- fmt.Sprintf("unknown cmd: %s", msg)
 	}
 }
 

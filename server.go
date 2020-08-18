@@ -3,8 +3,8 @@
 package main
 
 import (
-	"flag"
 	"bufio"
+	"flag"
 	"fmt"
 	"log"
 	"net"
@@ -21,19 +21,19 @@ type client struct {
 var (
 	entering = make(chan client)
 	leaving  = make(chan client)
-	message  = make(chan string)
+	message  = make(chan string, 1)
 	clients  = make(map[client]bool)
 )
 
 var (
-	port=flag.Int("p",8000,"source port")
-	source=flag.String("s","0.0.0.0","source address")
-	host string
+	host   string
+	port   = flag.Int("p", 8000, "source port")
+	source = flag.String("s", "0.0.0.0", "source address")
 )
 
-func init(){
+func init() {
 	flag.Parse()
-	host=fmt.Sprintf("%s:%d",*source,*port)
+	host = fmt.Sprintf("%s:%d", *source, *port)
 }
 func main() {
 	listener, err := net.Listen("tcp", host)
@@ -69,10 +69,10 @@ func broadcast() {
 }
 
 func handleConn(conn net.Conn) {
-	ch := make(chan string)
-	go clientWriter(conn, ch)
+	ch := make(chan string, 1)
 	src := conn.RemoteAddr().String()
 	cli := client{ip: src, name: src, tunnel: ch}
+	go clientWriter(conn, ch)
 	entering <- cli
 	logWriter(cli.ip)
 
@@ -83,10 +83,10 @@ func handleConn(conn net.Conn) {
 			handleOrder(&cli, msg)
 			continue
 		}
-		message <- fmt.Sprintf("[%s]  %s", cli.name, msg)
+		message <- fmt.Sprintf("[%s]|%s", cli.name, msg)
 	}
 	leaving <- cli
-	message <- fmt.Sprintf("[world]  %s is dead!", cli.name)
+	message <- fmt.Sprintf("[world]%s is dead!", cli.name)
 	conn.Close()
 }
 
@@ -102,8 +102,8 @@ func handleOrder(cli *client, msg string) {
 			cli.name = *val
 			entering <- *cli //sync map
 			cli.tunnel <- "your name is " + cli.name
-			message <- fmt.Sprintf("[world]  %s has arrived!", cli.name)
-			logWriter(fmt.Sprintln(cli.ip,"=", cli.name))
+			message <- fmt.Sprintf("[world]%s has arrived!", cli.name)
+			logWriter(fmt.Sprintln(cli.ip, "=", cli.name))
 		}
 	default:
 		cli.tunnel <- fmt.Sprintf("unknown cmd: %s", msg)

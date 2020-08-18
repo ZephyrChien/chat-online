@@ -15,7 +15,7 @@ var (
 	name           = flag.String("n", "guest", "you could reset it by /name")
 	localHost      = flag.String("l", "127.0.0.1:9000", "listen client writer")
 	remoteHost     = flag.String("h", "127.0.0.1:8000", "remote server address")
-	isClientWriter = flag.Bool("writer", false, "start as client writer")
+	isClientWriter = flag.Bool("write", false, "start as client writer")
 )
 
 func init() {
@@ -53,6 +53,7 @@ func main() {
 	defer conn.Close()
 	go serverReader(conn)
 	go netWriter(conn, ch)
+	time.Sleep(1*time.Second)
 	if *name != "guest" {
 		ch <- "/name" + *name + "\n"
 	}
@@ -76,7 +77,7 @@ func main() {
 func serverReader(conn net.Conn) {
 	input := bufio.NewScanner(conn)
 	for input.Scan() {
-		now := time.Now().Format("01/02 15:04:05")
+		now := time.Now().Format("01-02 15:04:05")
 		fmt.Printf("<%s>%s\n", now, input.Text())
 	}
 }

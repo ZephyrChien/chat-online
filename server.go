@@ -18,6 +18,13 @@ type client struct {
 	tunnel chan<- string
 }
 
+// arguments
+var (
+	host   string
+	port   = flag.Int("p", 8000, "source port")
+	source = flag.String("s", "0.0.0.0", "source address")
+)
+
 var (
 	entering = make(chan client)
 	leaving  = make(chan client)
@@ -25,11 +32,6 @@ var (
 	clients  = make(map[client]bool)
 )
 
-var (
-	host   string
-	port   = flag.Int("p", 8000, "source port")
-	source = flag.String("s", "0.0.0.0", "source address")
-)
 
 func init() {
 	flag.Parse()
@@ -40,6 +42,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer listener.Close()
 	go broadcast()
 	for {
 		conn, err := listener.Accept()
@@ -80,7 +83,7 @@ func handleConn(conn net.Conn) {
 	for input.Scan() {
 		msg := input.Text()
 		if strings.HasPrefix(msg, "/") {
-			handleOrder(&cli, msg)
+			handleCMDS(&cli, msg)
 			continue
 		}
 		message <- fmt.Sprintf("[%s]|%s", cli.name, msg)
@@ -90,7 +93,7 @@ func handleConn(conn net.Conn) {
 	conn.Close()
 }
 
-func handleOrder(cli *client, msg string) {
+func handleCMDS(cli *client, msg string) {
 	switch {
 	case strings.HasPrefix(msg, "/name"):
 		val := new(string)

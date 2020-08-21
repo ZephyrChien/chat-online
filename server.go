@@ -3,14 +3,13 @@
 package main
 
 import (
+	"./cmd"
 	"bufio"
 	"flag"
 	"fmt"
 	"log"
 	"net"
-	"./cmd"
 )
-
 
 // arguments
 var (
@@ -75,8 +74,8 @@ func handleConn(conn net.Conn) {
 
 	input := bufio.NewScanner(conn)
 	for input.Scan() {
-		dat:=new(cmd.Data)
-		cmd.ResolvJSON(cmd.Base64Decode(input.Text()),dat)
+		dat := new(cmd.Data)
+		cmd.ResolvJSON(cmd.Base64Decode(input.Text()), dat)
 		if dat.CMD.Is {
 			cmd.HandleCMDS(clients, &cli, stat, dat)
 			continue

@@ -8,15 +8,9 @@ import (
 	"fmt"
 	"log"
 	"net"
-	"strings"
+	"./cmd"
 )
 
-type client struct {
-	ip     string
-	name   string
-	extra  string
-	tunnel chan<- string
-}
 
 // arguments
 var (
@@ -26,16 +20,16 @@ var (
 )
 
 var (
-	entering = make(chan client)
-	leaving  = make(chan client)
-	message  = make(chan string, 1)
-	clients  = make(map[client]bool)
+	stat    = new(cmd.Status)
+	clients = make(map[cmd.Client]bool)
 )
-
 
 func init() {
 	flag.Parse()
 	host = fmt.Sprintf("%s:%d", *source, *port)
+	stat.Entering = make(chan cmd.Client, 1)
+	stat.Leaving = make(chan cmd.Client, 1)
+	stat.Message = make(chan string, 1)
 }
 func main() {
 	listener, err := net.Listen("tcp", host)
@@ -57,15 +51,15 @@ func main() {
 func broadcast() {
 	for {
 		select {
-		case msg := <-message:
-			logWriter(msg)
+		case msg := <-stat.Message:
+			cmd.LogWriter(msg)
 			for cli := range clients {
-				cli.tunnel <- msg
+				cli.Tunnel <- msg
 			}
-		case cli := <-entering:
+		case cli := <-stat.Entering:
 			clients[cli] = true
-		case cli := <-leaving:
-			close(cli.tunnel)
+		case cli := <-stat.Leaving:
+			close(cli.Tunnel)
 			delete(clients, cli)
 		}
 	}
@@ -74,50 +68,22 @@ func broadcast() {
 func handleConn(conn net.Conn) {
 	ch := make(chan string, 1)
 	src := conn.RemoteAddr().String()
-	cli := client{ip: src, name: src, tunnel: ch}
-	go clientWriter(conn, ch)
-	entering <- cli
-	logWriter(cli.ip)
+	cli := cmd.Client{IP: src, Name: src, Tunnel: ch}
+	go cmd.RemoteWriter(conn, ch)
+	stat.Entering <- cli
+	cmd.LogWriter(cli.IP)
 
 	input := bufio.NewScanner(conn)
 	for input.Scan() {
-		msg := input.Text()
-		if strings.HasPrefix(msg, "/") {
-			handleCMDS(&cli, msg)
+		dat:=new(cmd.Data)
+		cmd.ResolvJSON(cmd.Base64Decode(input.Text()),dat)
+		if dat.CMD.Is {
+			cmd.HandleCMDS(clients, &cli, stat, dat)
 			continue
 		}
-		message <- fmt.Sprintf("[%s]|%s", cli.name, msg)
+		stat.Message <- fmt.Sprintf("[%s]|%s", cli.Name, dat.Message)
 	}
-	leaving <- cli
-	message <- fmt.Sprintf("[world]%s is dead!", cli.name)
+	stat.Leaving <- cli
+	stat.Message <- fmt.Sprintf("[world]%s is dead!", cli.Name)
 	conn.Close()
-}
-
-func handleCMDS(cli *client, msg string) {
-	switch {
-	case strings.HasPrefix(msg, "/name"):
-		val := new(string)
-		fmt.Sscanf(msg, "/name%s", val)
-		if *val == "" {
-			cli.tunnel <- "cmdErr: /name"
-		} else {
-			delete(clients, *cli)
-			cli.name = *val
-			entering <- *cli //sync map
-			cli.tunnel <- "your name is " + cli.name
-			message <- fmt.Sprintf("[world]%s has arrived!", cli.name)
-			logWriter(fmt.Sprintln(cli.ip, "=", cli.name))
-		}
-	default:
-		cli.tunnel <- fmt.Sprintf("unknown cmd: %s", msg)
-	}
-}
-
-func clientWriter(conn net.Conn, ch <-chan string) {
-	for msg := range ch {
-		fmt.Fprintln(conn, msg)
-	}
-}
-func logWriter(msg string) {
-	log.Printf("%s", msg)
 }

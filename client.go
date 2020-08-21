@@ -4,13 +4,13 @@ package main
 
 import (
 	"bufio"
-	//"encoding/json"
 	"flag"
 	"fmt"
 	"net"
 	"os"
 	"strings"
 	"time"
+	"./cmd"
 )
 
 //arguments
@@ -46,7 +46,7 @@ func main() {
 		}
 	}
 
-	ch := make(chan []byte, 1)
+	ch := make(chan string, 1)
 	//connect to remote server
 	conn, err := net.Dial("tcp", *remoteHost)
 	if err != nil {
@@ -55,11 +55,12 @@ func main() {
 	}
 	defer conn.Close()
 	go remoteReader(conn)
-	go remoteWriter(conn, ch)
+	go cmd.RemoteWriter(conn, ch)
 	time.Sleep(1 * time.Second)
 
 	if *username != "guest" {
-		ch <- makeJSON(&data{CMD: command{true, "name", *username}})
+		dat := &cmd.Data{CMD: cmd.Command{true, "name", *username}}
+		ch <- cmd.Base64Encode(cmd.MakeJSON(dat))
 	}
 
 	//listen client writer
@@ -79,17 +80,17 @@ func main() {
 	}
 }
 
-func localReader(conn net.Conn, ch chan<- []byte) {
+func localReader(conn net.Conn, ch chan<- string) {
 	fmt.Println("connect to client writer", conn.RemoteAddr().String())
 	input := bufio.NewScanner(conn)
 	for input.Scan() {
-		cmd := &command{}
-		dat := &data{Name: *username, Message: input.Text()}
+		od := new(cmd.Command)
+		dat := &cmd.Data{Name: *username, Message: input.Text()}
 		if strings.HasPrefix(input.Text(), "/") {
-			handleCMDC(cmd, dat)
+			cmd.HandleCMDC(dat, od)
 		}
-		buf := makeJSON(dat)
-		ch <- buf
+		buf := cmd.MakeJSON(dat)
+		ch <- cmd.Base64Encode(buf)
 	}
 	fmt.Println("client writer", conn.RemoteAddr().String(), "close")
 	conn.Close()
@@ -109,25 +110,3 @@ func remoteReader(conn net.Conn) {
 	}
 }
 
-func remoteWriter(conn net.Conn, ch <-chan []byte) {
-	for dat := range ch {
-		conn.Write(dat)
-	}
-}
-
-func handleCMDC(cmd *command, dat *data) {
-	switch {
-	case strings.HasPrefix(dat.Message, "/name"):
-		fmt.Sscanf(dat.Message, "/name%s", &cmd.Val)
-		if cmd.Val == "" {
-			fmt.Println("/name: err args")
-		} else {
-			cmd.Is = true
-			cmd.Key = "name"
-		}
-	default:
-		fmt.Printf("unknown cmd: %s\n", dat.Message)
-	}
-	dat.Message = ""
-	dat.CMD = *cmd
-}

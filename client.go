@@ -3,6 +3,7 @@
 package main
 
 import (
+	"./cmd"
 	"bufio"
 	"flag"
 	"fmt"
@@ -10,7 +11,6 @@ import (
 	"os"
 	"strings"
 	"time"
-	"./cmd"
 )
 
 //arguments
@@ -109,4 +109,3 @@ func remoteReader(conn net.Conn) {
 		fmt.Printf("<%s>%s\n", now, input.Text())
 	}
 }
-

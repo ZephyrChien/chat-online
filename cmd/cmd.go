@@ -7,23 +7,26 @@ import (
 	"strings"
 )
 
+//Client :specified by name
 type Client struct {
 	IP     string
 	Name   string
 	Extra  string
 	Tunnel chan<- string
 }
+
+//Status :the combination of channel
 type Status struct {
 	Entering chan Client
 	Leaving  chan Client
 	Message  chan string
 }
 
-
 //server
 
+//HandleCMDS handle command sent from client
 func HandleCMDS(clients map[Client]bool, cli *Client, stat *Status, dat *Data) {
-	switch key,val:=dat.CMD.Key,dat.CMD.Val;key{
+	switch key, val := dat.CMD.Key, dat.CMD.Val; key {
 	case "name":
 		delete(clients, *cli)
 		cli.Name = val
@@ -35,11 +38,19 @@ func HandleCMDS(clients map[Client]bool, cli *Client, stat *Status, dat *Data) {
 		cli.Tunnel <- fmt.Sprintf("unknown cmd: %s", val)
 	}
 }
+
+//LogWriter record these stuff:
+//entering & leaving
+//clients' address & name
+//chat history
 func LogWriter(msg string) {
 	log.Printf("%s", msg)
 }
 
 //client
+
+//HandleCMDC handle message like "/help"
+//respond on client or send it to remote server
 func HandleCMDC(dat *Data, od *Command) {
 	switch {
 	case strings.HasPrefix(dat.Message, "/name"):
@@ -58,7 +69,10 @@ func HandleCMDC(dat *Data, od *Command) {
 	dat.Message = ""
 	dat.CMD = *od
 }
+
 //io
+
+//RemoteWriter send strings to the partner
 func RemoteWriter(conn net.Conn, ch <-chan string) {
 	for str := range ch {
 		fmt.Fprintln(conn, str)

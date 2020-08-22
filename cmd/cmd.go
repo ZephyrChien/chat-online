@@ -15,13 +15,16 @@ func HandleCMDS(clients map[Client]bool, cli *Client, stat *Status, dat *Data, m
 		delete(clients, *cli)
 		cli.Name = val
 		stat.Entering <- *cli //sync map
-		cli.Tunnel <- "You are " + cli.Name
-		stat.Message <- fmt.Sprintf("[world]%s has arrived!", cli.Name)
+		cli.Tunnel <- fmt.Sprintf("[world]|You are %s", cli.Name)
+		stat.Message <- fmt.Sprintf("[world]|[%s] has arrived!", cli.Name)
 		mlog.Print(fmt.Sprintf("%s -> %s", cli.IP, cli.Name))
 	case "list":
+		str := []string{}
 		for c := range clients {
-			cli.Tunnel <- c.Name
+			str = append(str, fmt.Sprintf("[%s]",c.Name))
 		}
+		cli.Tunnel <- fmt.Sprintf("[world]|list")
+		cli.Tunnel <- strings.Join(str, "|")
 	default:
 		cli.Tunnel <- fmt.Sprintf("unknown cmd: %s", key)
 	}
@@ -38,7 +41,19 @@ func HandleCMDC(dat *Data, od *Command, ch chan<- string, key string) {
 		buf := MakeJSON(dat)
 		ch <- Encrypt(buf, key)
 	}
+	help := func() {
+		fmt.Println("Usage:  ")
+		fmt.Println("/help  			show usage")
+		fmt.Println("/list  			list all users")
+		fmt.Println("/name <username>   reset your name")
+	}
 	switch val := ""; {
+	case strings.HasPrefix(dat.Message, "/help"):
+		help()
+	case strings.HasPrefix(dat.Message, "/list"):
+		od.Is = true
+		od.Key = "list"
+		send()
 	case strings.HasPrefix(dat.Message, "/name"):
 		fmt.Sscanf(dat.Message, "/name%s", &val)
 		if val == "" {
@@ -49,16 +64,8 @@ func HandleCMDC(dat *Data, od *Command, ch chan<- string, key string) {
 			od.Val = val
 			send()
 		}
-	case strings.HasPrefix(dat.Message, "/list"):
-		fmt.Sscanf(dat.Message, "/name%s", &val)
-		if val != "" {
-			fmt.Println("/list: err args")
-		} else {
-			od.Is = true
-			od.Key = "list"
-			send()
-		}
 	default:
 		fmt.Printf("unknown cmd: %s\n", dat.Message)
+		help()
 	}
 }

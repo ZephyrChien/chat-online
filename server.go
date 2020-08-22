@@ -104,6 +104,6 @@ func handleConn(conn net.Conn) {
 		}
 	}
 	stat.Leaving <- cli
-	stat.Message <- fmt.Sprintf("[world]%s is dead!", cli.Name)
+	stat.Message <- fmt.Sprintf("[world]|[%s] is dead!", cli.Name)
 	conn.Close()
 }

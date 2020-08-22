@@ -52,8 +52,7 @@ func main() {
 	//connect to remote server
 	conn, err := net.Dial("tcp", *remoteHost)
 	if err != nil {
-		cmd.PrintErr(err)
-		os.Exit(1)
+		log.Fatal(err)
 	}
 	defer conn.Close()
 	fmt.Println("init..")
@@ -62,7 +61,7 @@ func main() {
 	cmd.ExDataWriter(conn, "c_hello", *key)
 	fmt.Println("wait for server acknowledge..")
 	if !cmd.OneTouchAuth(conn, "s_ack", *key, 2, log.New(os.Stderr, "", log.LstdFlags)) {
-		os.Exit(1)
+		log.Fatal("Auth failed")
 	}
 	fmt.Println("Auth successfully!")
 
@@ -119,6 +118,6 @@ func remoteReader(conn net.Conn) {
 	for input.Scan() {
 		msg := cmd.Decrypt(input.Text(), *key)
 		now := time.Now().Format("01-02 15:04:05")
-		fmt.Printf("<%s>%s\n", now, msg)
+		fmt.Printf("[%s]%s\n", now, msg)
 	}
 }

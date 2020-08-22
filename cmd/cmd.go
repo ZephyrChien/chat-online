@@ -88,4 +88,3 @@ func RemoteEnWriter(conn net.Conn, ch <-chan string, key string) {
 func PrintErr(err error) {
 	fmt.Fprintln(os.Stderr, err)
 }
-

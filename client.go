@@ -15,6 +15,7 @@ import (
 
 //arguments
 var (
+	key            = flag.String("k", "0000000000000000", "crypt key")
 	username       = flag.String("n", "guest", "you could reset it by /name")
 	localHost      = flag.String("l", "127.0.0.1:9000", "listen client writer")
 	remoteHost     = flag.String("h", "127.0.0.1:8000", "remote server address")
@@ -29,7 +30,7 @@ func main() {
 		ch := make(chan string, 1)
 		localConn, err := net.Dial("tcp", *localHost)
 		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
+			cmd.PrintErr(err)
 		}
 		defer localConn.Close()
 		go localWriter(localConn, ch)
@@ -39,7 +40,7 @@ func main() {
 			fmt.Printf("writer:|")
 			input, err := inputReader.ReadString('\n')
 			if err != nil {
-				fmt.Fprintln(os.Stderr, err)
+				cmd.PrintErr(err)
 				continue
 			}
 			ch <- input
@@ -50,7 +51,7 @@ func main() {
 	//connect to remote server
 	conn, err := net.Dial("tcp", *remoteHost)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
+		cmd.PrintErr(err)
 		os.Exit(1)
 	}
 	defer conn.Close()
@@ -59,21 +60,21 @@ func main() {
 	time.Sleep(1 * time.Second)
 
 	if *username != "guest" {
-		dat := &cmd.Data{CMD: cmd.Command{true, "name", *username}}
-		ch <- cmd.Base64Encode(cmd.MakeJSON(dat))
+		dat := &cmd.Data{CMD: cmd.Command{Is: true, Key: "name", Val: *username}}
+		ch <- cmd.Encrypt(cmd.MakeJSON(dat), *key)
 	}
 
 	//listen client writer
 	listener, err := net.Listen("tcp", *localHost)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
+		cmd.PrintErr(err)
 		os.Exit(1)
 	}
 	defer listener.Close()
 	for {
 		receiveLocalConn, err := listener.Accept()
 		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
+			cmd.PrintErr(err)
 			continue
 		}
 		go localReader(receiveLocalConn, ch)
@@ -87,10 +88,11 @@ func localReader(conn net.Conn, ch chan<- string) {
 		od := new(cmd.Command)
 		dat := &cmd.Data{Name: *username, Message: input.Text()}
 		if strings.HasPrefix(input.Text(), "/") {
-			cmd.HandleCMDC(dat, od)
+			cmd.HandleCMDC(dat, od, ch, *key)
+			continue
 		}
 		buf := cmd.MakeJSON(dat)
-		ch <- cmd.Base64Encode(buf)
+		ch <- cmd.Encrypt(buf, *key)
 	}
 	fmt.Println("client writer", conn.RemoteAddr().String(), "close")
 	conn.Close()
@@ -105,7 +107,8 @@ func localWriter(conn net.Conn, ch <-chan string) {
 func remoteReader(conn net.Conn) {
 	input := bufio.NewScanner(conn)
 	for input.Scan() {
+		msg := cmd.Decrypt(input.Text(), *key)
 		now := time.Now().Format("01-02 15:04:05")
-		fmt.Printf("<%s>%s\n", now, input.Text())
+		fmt.Printf("<%s>%s\n", now, msg)
 	}
 }

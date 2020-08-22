@@ -3,8 +3,6 @@ package cmd
 import (
 	"encoding/base64"
 	"encoding/json"
-	"fmt"
-	"os"
 )
 
 //Command :empty unless the message starts with "/"
@@ -26,7 +24,7 @@ type Data struct {
 func MakeJSON(dat *Data) []byte {
 	buf, err := json.Marshal(dat)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
+		PrintErr(err)
 	}
 	return buf
 }
@@ -45,7 +43,7 @@ func Base64Encode(buf []byte) string {
 func Base64Decode(str string) []byte {
 	buf, err := base64.StdEncoding.DecodeString(str)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
+		PrintErr(err)
 	}
 	return buf
 }

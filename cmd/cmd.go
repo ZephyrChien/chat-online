@@ -40,14 +40,6 @@ func HandleCMDS(clients map[Client]bool, cli *Client, stat *Status, dat *Data) {
 	}
 }
 
-//LogWriter record these stuff:
-//entering & leaving
-//clients' address & name
-//chat history
-func LogWriter(msg string) {
-	log.Printf("%s\n", msg)
-}
-
 //client
 
 //HandleCMDC handle message like "/help"
@@ -96,3 +88,4 @@ func RemoteEnWriter(conn net.Conn, ch <-chan string, key string) {
 func PrintErr(err error) {
 	fmt.Fprintln(os.Stderr, err)
 }
+

@@ -16,6 +16,7 @@ var (
 	host   string
 	port   = flag.Int("p", 8000, "source port")
 	source = flag.String("s", "0.0.0.0", "source address")
+	key    = flag.String("k", "0000000000000000", "crypt key")
 )
 
 var (
@@ -68,14 +69,14 @@ func handleConn(conn net.Conn) {
 	ch := make(chan string, 1)
 	src := conn.RemoteAddr().String()
 	cli := cmd.Client{IP: src, Name: src, Tunnel: ch}
-	go cmd.RemoteWriter(conn, ch)
+	go cmd.RemoteEnWriter(conn, ch, *key)
 	stat.Entering <- cli
 	cmd.LogWriter(cli.IP)
 
 	input := bufio.NewScanner(conn)
 	for input.Scan() {
 		dat := new(cmd.Data)
-		cmd.ResolvJSON(cmd.Base64Decode(input.Text()), dat)
+		cmd.ResolvJSON(cmd.Decrypt(input.Text(), *key), dat)
 		if dat.CMD.Is {
 			cmd.HandleCMDS(clients, &cli, stat, dat)
 			continue

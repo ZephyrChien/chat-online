@@ -7,6 +7,7 @@ import (
 	"bufio"
 	"flag"
 	"fmt"
+	"log"
 	"net"
 	"os"
 	"strings"
@@ -55,10 +56,19 @@ func main() {
 		os.Exit(1)
 	}
 	defer conn.Close()
+	fmt.Println("init..")
+	time.Sleep(1 * time.Second)
+	fmt.Println("send client hello..")
+	cmd.ExDataWriter(conn, "c_hello", *key)
+	fmt.Println("wait for server acknowledge..")
+	if !cmd.OneTouchAuth(conn, "s_ack", *key, 2, log.New(os.Stderr, "", log.LstdFlags)) {
+		os.Exit(1)
+	}
+	fmt.Println("Auth successfully!")
+
 	go remoteReader(conn)
 	go cmd.RemoteWriter(conn, ch)
 	time.Sleep(1 * time.Second)
-
 	if *username != "guest" {
 		dat := &cmd.Data{CMD: cmd.Command{Is: true, Key: "name", Val: *username}}
 		ch <- cmd.Encrypt(cmd.MakeJSON(dat), *key)

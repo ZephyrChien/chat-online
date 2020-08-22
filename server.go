@@ -7,41 +7,55 @@ import (
 	"bufio"
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"net"
+	"os"
 )
 
 // arguments
 var (
-	host   string
-	port   = flag.Int("p", 8000, "source port")
-	source = flag.String("s", "0.0.0.0", "source address")
-	key    = flag.String("k", "0000000000000000", "crypt key")
+	host    string
+	port    = flag.Int("p", 8000, "source port")
+	source  = flag.String("s", "0.0.0.0", "source address")
+	logfile = flag.String("log", "access.log", "file to store log")
+	key     = flag.String("k", "0000000000000000", "crypt key")
 )
 
 var (
 	stat    = new(cmd.Status)
 	clients = make(map[cmd.Client]bool)
+	mlog    *log.Logger
+	logFile *os.File
 )
 
 func init() {
+	//get args
 	flag.Parse()
 	host = fmt.Sprintf("%s:%d", *source, *port)
 	stat.Entering = make(chan cmd.Client, 1)
 	stat.Leaving = make(chan cmd.Client, 1)
 	stat.Message = make(chan string, 1)
-}
-func main() {
-	listener, err := net.Listen("tcp", host)
+
+	//init logger
+	logFile, err := os.OpenFile(*logfile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 	if err != nil {
 		log.Fatal(err)
+	}
+	mlog = log.New(io.MultiWriter(os.Stderr, logFile), "", log.LstdFlags)
+}
+func main() {
+	defer logFile.Close()
+	listener, err := net.Listen("tcp", host)
+	if err != nil {
+		mlog.Fatal(err)
 	}
 	defer listener.Close()
 	go broadcast()
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
-			log.Print(err)
+			mlog.Print(err)
 			continue
 		}
 		go handleConn(conn)
@@ -52,7 +66,7 @@ func broadcast() {
 	for {
 		select {
 		case msg := <-stat.Message:
-			cmd.LogWriter(msg)
+			mlog.Print(msg)
 			for cli := range clients {
 				cli.Tunnel <- msg
 			}
@@ -71,14 +85,14 @@ func handleConn(conn net.Conn) {
 	cli := cmd.Client{IP: src, Name: src, Tunnel: ch}
 	go cmd.RemoteEnWriter(conn, ch, *key)
 	stat.Entering <- cli
-	cmd.LogWriter(cli.IP)
+	mlog.Print(cli.IP)
 
 	input := bufio.NewScanner(conn)
 	for input.Scan() {
 		dat := new(cmd.Data)
 		cmd.ResolvJSON(cmd.Decrypt(input.Text(), *key), dat)
 		if dat.CMD.Is {
-			cmd.HandleCMDS(clients, &cli, stat, dat)
+			cmd.HandleCMDS(clients, &cli, stat, dat, mlog)
 			continue
 		}
 		stat.Message <- fmt.Sprintf("[%s]|%s", cli.Name, dat.Message)

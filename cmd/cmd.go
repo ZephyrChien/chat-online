@@ -26,7 +26,7 @@ type Status struct {
 //server
 
 //HandleCMDS handle command sent from client
-func HandleCMDS(clients map[Client]bool, cli *Client, stat *Status, dat *Data) {
+func HandleCMDS(clients map[Client]bool, cli *Client, stat *Status, dat *Data, mlog *log.Logger) {
 	switch key, val := dat.CMD.Key, dat.CMD.Val; key {
 	case "name":
 		delete(clients, *cli)
@@ -34,7 +34,7 @@ func HandleCMDS(clients map[Client]bool, cli *Client, stat *Status, dat *Data) {
 		stat.Entering <- *cli //sync map
 		cli.Tunnel <- "You are " + cli.Name
 		stat.Message <- fmt.Sprintf("[world]%s has arrived!", cli.Name)
-		LogWriter(fmt.Sprintf("%s -> %s", cli.IP, cli.Name))
+		mlog.Print(fmt.Sprintf("%s -> %s", cli.IP, cli.Name))
 	default:
 		cli.Tunnel <- fmt.Sprintf("unknown cmd: %s", key)
 	}

@@ -3,25 +3,8 @@ package cmd
 import (
 	"fmt"
 	"log"
-	"net"
-	"os"
 	"strings"
 )
-
-//Client :specified by name
-type Client struct {
-	IP     string
-	Name   string
-	Extra  string
-	Tunnel chan<- string
-}
-
-//Status :the combination of channel
-type Status struct {
-	Entering chan Client
-	Leaving  chan Client
-	Message  chan string
-}
 
 //server
 
@@ -35,6 +18,10 @@ func HandleCMDS(clients map[Client]bool, cli *Client, stat *Status, dat *Data, m
 		cli.Tunnel <- "You are " + cli.Name
 		stat.Message <- fmt.Sprintf("[world]%s has arrived!", cli.Name)
 		mlog.Print(fmt.Sprintf("%s -> %s", cli.IP, cli.Name))
+	case "list":
+		for c := range clients {
+			cli.Tunnel <- c.Name
+		}
 	default:
 		cli.Tunnel <- fmt.Sprintf("unknown cmd: %s", key)
 	}
@@ -51,9 +38,8 @@ func HandleCMDC(dat *Data, od *Command, ch chan<- string, key string) {
 		buf := MakeJSON(dat)
 		ch <- Encrypt(buf, key)
 	}
-	switch {
+	switch val := ""; {
 	case strings.HasPrefix(dat.Message, "/name"):
-		val := ""
 		fmt.Sscanf(dat.Message, "/name%s", &val)
 		if val == "" {
 			fmt.Println("/name: err args")
@@ -63,28 +49,16 @@ func HandleCMDC(dat *Data, od *Command, ch chan<- string, key string) {
 			od.Val = val
 			send()
 		}
+	case strings.HasPrefix(dat.Message, "/list"):
+		fmt.Sscanf(dat.Message, "/name%s", &val)
+		if val != "" {
+			fmt.Println("/list: err args")
+		} else {
+			od.Is = true
+			od.Key = "list"
+			send()
+		}
 	default:
 		fmt.Printf("unknown cmd: %s\n", dat.Message)
 	}
-}
-
-//io
-
-//RemoteWriter send data to partner
-func RemoteWriter(conn net.Conn, ch <-chan string) {
-	for str := range ch {
-		fmt.Fprintln(conn, str)
-	}
-}
-
-//RemoteEnWriter encrypt data then send to partner
-func RemoteEnWriter(conn net.Conn, ch <-chan string, key string) {
-	for msg := range ch {
-		fmt.Fprintln(conn, Encrypt([]byte(msg), key))
-	}
-}
-
-//PrintErr directly print err
-func PrintErr(err error) {
-	fmt.Fprintln(os.Stderr, err)
 }

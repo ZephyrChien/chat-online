@@ -5,21 +5,6 @@ import (
 	"encoding/json"
 )
 
-//Command :empty unless the message starts with "/"
-type Command struct {
-	Is  bool   `json:"apply"`
-	Key string `json:"option"`
-	Val string `json:"value"`
-}
-
-//Data :client send data in this format
-type Data struct {
-	Name    string  `json:"name"`
-	Message string  `json:"message"`
-	CMD     Command `json:"cmd"`
-	Extra   string  `json:"extra"`
-}
-
 //MakeJSON format key:val pairs as json
 func MakeJSON(dat *Data) []byte {
 	buf, err := json.Marshal(dat)
@@ -43,7 +28,20 @@ func Base64Encode(buf []byte) string {
 func Base64Decode(str string) []byte {
 	buf, err := base64.StdEncoding.DecodeString(str)
 	if err != nil {
-		PrintErr(err)
+		panic(err)
 	}
 	return buf
+}
+
+//ServerBase64Decode close conn if unable to decode
+func ServerBase64Decode(str string) (buf []byte, err error) {
+	defer func() {
+		if err := recover(); err != nil {
+		}
+	}()
+	buf, err = base64.StdEncoding.DecodeString(str)
+	if err != nil {
+		panic(err)
+	}
+	return buf, err
 }

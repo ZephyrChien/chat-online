@@ -9,11 +9,11 @@ go build -o server -tags=server
 go build -o client
 ```
 ## Usage
-Start the server with
+Start the server with:
 ```
 server -s <ip_address> -p <port> -key <16byte_key> --ssl <cert> <key> [optional]
 ```
-Or you can simply run it with
+Or you can simply run it with:
 ```
 server -p <port> //default address is 0.0.0.0:8000
 ```

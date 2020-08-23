@@ -17,16 +17,18 @@ import (
 var (
 	host    string
 	port    = flag.Int("p", 8000, "source port")
+	ssl     = flag.Bool("ssl", false, "enable tls")
 	key     = flag.String("k", "0000000000000000", "crypt key")
 	source  = flag.String("s", "0.0.0.0", "source address")
 	logfile = flag.String("log", "access.log", "file to store log")
 )
 
 var (
-	stat    = new(cmd.Status)
-	clients = make(map[cmd.Client]bool)
-	mlog    *log.Logger
-	logFile *os.File
+	stat     = new(cmd.Status)
+	clients  = make(map[cmd.Client]bool)
+	mlog     *log.Logger
+	logFile  *os.File
+	listener net.Listener
 )
 
 func init() {
@@ -46,10 +48,7 @@ func init() {
 }
 func main() {
 	defer logFile.Close()
-	listener, err := net.Listen("tcp", host)
-	if err != nil {
-		mlog.Fatal(err)
-	}
+	listener := cmd.InitListener("tcp", host, *ssl)
 	defer listener.Close()
 	go broadcast()
 	for {

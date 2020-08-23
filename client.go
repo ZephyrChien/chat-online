@@ -14,8 +14,8 @@ import (
 	"time"
 )
 
-//arguments
 var (
+	ssl            = flag.Bool("ssl", false, "enable tls")
 	key            = flag.String("k", "0000000000000000", "crypt key")
 	username       = flag.String("n", "guest", "you could reset it by /name")
 	localHost      = flag.String("l", "127.0.0.1:9000", "listen client writer")
@@ -47,23 +47,20 @@ func main() {
 			ch <- input
 		}
 	}
-
 	ch := make(chan string, 1)
 	//connect to remote server
-	conn, err := net.Dial("tcp", *remoteHost)
-	if err != nil {
-		log.Fatal(err)
-	}
+	conn := cmd.InitConn("tcp", *remoteHost, *ssl)
 	defer conn.Close()
-	fmt.Println("init..")
+	fmt.Println("client init")
 	time.Sleep(1 * time.Second)
-	fmt.Println("send client hello..")
+	fmt.Println("send client hello")
 	cmd.ExDataWriter(conn, "c_hello", *key)
-	fmt.Println("wait for server acknowledge..")
+	fmt.Println("wait ack from server")
 	if !cmd.OneTouchAuth(conn, "s_ack", *key, 2, log.New(os.Stderr, "", log.LstdFlags)) {
 		log.Fatal("Auth failed")
 	}
 	fmt.Println("Auth successfully!")
+	fmt.Println("=========================") // x25
 
 	go remoteReader(conn)
 	go cmd.RemoteWriter(conn, ch)

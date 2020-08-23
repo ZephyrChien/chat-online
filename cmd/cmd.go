@@ -21,7 +21,7 @@ func HandleCMDS(clients map[Client]bool, cli *Client, stat *Status, dat *Data, m
 	case "list":
 		str := []string{}
 		for c := range clients {
-			str = append(str, fmt.Sprintf("[%s]",c.Name))
+			str = append(str, fmt.Sprintf("[%s]", c.Name))
 		}
 		cli.Tunnel <- fmt.Sprintf("[world]|list")
 		cli.Tunnel <- strings.Join(str, "|")

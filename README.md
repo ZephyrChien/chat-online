@@ -20,13 +20,15 @@ server -p <port> //default address is 0.0.0.0:8000
 >Tips: the default key is 00...0 (x16)
 You'd better set another one by the [-key] option
 
+
 >As for the client, it would be a little bit troublesome  
 >In order not to mix up Text and Input(Stdin)  
 >You need to run two clients at the same time  
->One to send & receive message, the other one used as keyboard  
->This problem might be solved later(not sure, I need to rewrite it one day=_=  
-Example:
+>One to send & receive message, the other used as keyboard  
+>This might be solved later(not sure, I need to rewrite it one day=_=  
+  
 ```
+//Example:
 client -n <name> -h <remote_address:port> -l <local_address:port> //receive &send message
 client -l <local_address:port> --write //input area
 //The two clients are locally connected with the LoopBack Address

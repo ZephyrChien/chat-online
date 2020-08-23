@@ -32,7 +32,7 @@ You'd better set another one by the [-key] option.
 client -n <name> -h <remote_address:port> -l <local_address:port> //receive &send message
 client -l <local_address:port> --write //input area
 ```
->The two clients are locally connected with the LoopBack Address
+>The two clients are locally connected through the LoopBack Address
 >You can alse use other tools as a writer, such as netcat:
 ```
 nc -nv <local_address> <port>

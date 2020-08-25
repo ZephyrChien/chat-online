@@ -35,10 +35,10 @@ func ExDataWriter(conn net.Conn, extra, key string) {
 }
 
 //InitListener up to if tls is enabled
-func InitListener(network, address string, ssl bool) (l net.Listener) {
+func InitListener(network, address string, ssl bool, cert, key string) (l net.Listener) {
 	if ssl {
 		log.Print("listen with tls..")
-		cert, err := tls.LoadX509KeyPair("server.crt", "server.key")
+		cert, err := tls.LoadX509KeyPair(cert, key)
 		if err != nil {
 			log.Fatal(err)
 		}

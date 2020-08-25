@@ -19,6 +19,8 @@ var (
 	port    = flag.Int("p", 8000, "source port")
 	ssl     = flag.Bool("ssl", false, "enable tls")
 	key     = flag.String("k", "0000000000000000", "crypt key")
+	cert    = flag.String("cert", "server.crt", "valid certificate")
+	sslkey  = flag.String("key", "server.key", "valid key of cert")
 	source  = flag.String("s", "0.0.0.0", "source address")
 	logfile = flag.String("log", "access.log", "file to store log")
 )
@@ -48,7 +50,7 @@ func init() {
 }
 func main() {
 	defer logFile.Close()
-	listener := cmd.InitListener("tcp", host, *ssl)
+	listener := cmd.InitListener("tcp", host, *ssl, *cert, *sslkey)
 	defer listener.Close()
 	go broadcast()
 	for {

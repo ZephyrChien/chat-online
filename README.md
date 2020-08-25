@@ -11,14 +11,14 @@ go build -o client
 ## Usage
 >Start the server with:
 ```
-server -s <ip_address> -p <port> -key <16byte_key> --ssl <cert> <key> [optional]
+server -s <ip_address> -p <port> -k <16byte_key> --ssl --cert <crt> --key <key>
 ```
 >Or you can simply run it with:
 ```
 server -p <port> //default address is 0.0.0.0:8000
 ```
 >Tips: the default key is 00...0 (x16)
-You'd better set another one by the [-key] option.  
+You'd better set another one by the [-k] option.  
   
 >As for the client, it would be a little bit troublesome. 
 >In order not to mix up Text and Input(Stdin), 
@@ -39,7 +39,7 @@ nc -nv <local_address> <port>
 ```
 ## TODO:
 1. more cmds for client and server(e.g. /kick)
-2. more elements attached to a single client/message(such as level,privilege..)
+2. more elements attached to a single client/message(such as level, privilege..)
 3. beautify client(may be one with GUI)
 4. enhance log
 

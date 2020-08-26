@@ -6,6 +6,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"time"
 )
 
 //RemoteWriter send data to partner
@@ -62,15 +63,27 @@ func InitListener(network, address string, ssl bool, cert, key string) (l net.Li
 
 //InitConn up to if tls is enabled
 func InitConn(network, address string, ssl bool) (conn net.Conn) {
+	fmt.Println("tcp call")
+	plainconn, err := net.Dial("tcp", address)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println("connected")
+	conn = plainconn
+	if tcpconn, ok := conn.(*net.TCPConn); ok {
+		fmt.Println("keep-alive set")
+		tcpconn.SetKeepAlive(true)
+		tcpconn.SetKeepAlivePeriod(60 * time.Second)
+		conn = net.Conn(tcpconn)
+	}
+	fmt.Println("=========================") // x25
 	if ssl {
 		fmt.Println("use tls")
 		config := &tls.Config{
 			InsecureSkipVerify: true,
 		}
-		tlsconn, err := tls.Dial("tcp", address, config)
-		if err != nil {
-			log.Fatal(err)
-		}
+		tlsconn := tls.Client(conn, config)
+		tlsconn.Handshake()
 		state := tlsconn.ConnectionState()
 		var version string
 		switch v := state.Version; v {
@@ -85,14 +98,8 @@ func InitConn(network, address string, ssl bool) (conn net.Conn) {
 		}
 		fmt.Println("tls handshake succeed")
 		fmt.Printf("tls version: %s\n", version)
-		fmt.Println("=========================") // x25
 		conn = tlsconn
-	} else {
-		tcpconn, err := net.Dial("tcp", address)
-		if err != nil {
-			log.Fatal(err)
-		}
-		conn = tcpconn
 	}
+	fmt.Println("=========================") // x25
 	return conn
 }

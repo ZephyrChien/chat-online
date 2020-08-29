@@ -18,11 +18,11 @@ var (
 	host    string
 	port    = flag.Int("p", 8000, "source port")
 	ssl     = flag.Bool("ssl", false, "enable tls")
-	key     = flag.String("k", "0000000000000000", "crypt key")
+	key     = flag.String("k", "0000000000000000", "128 bit key")
 	cert    = flag.String("cert", "server.crt", "valid certificate")
-	sslkey  = flag.String("key", "server.key", "valid key of cert")
+	sslkey  = flag.String("key", "server.key", "private key of cert")
 	source  = flag.String("s", "0.0.0.0", "source address")
-	logfile = flag.String("log", "access.log", "file to store log")
+	logfile = flag.String("log", "access.log", "log path")
 )
 
 var (

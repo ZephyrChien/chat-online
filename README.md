@@ -39,7 +39,7 @@ nc -nv <local_address> <port>
 ```
 ## TODO:
 1. more cmds for client and server(e.g. /kick)
-2. more elements attached to a single client/message(such as level, privilege..)
+2. more elements attached to a single message(such as level, privilege..)
 3. beautify client(may be one with GUI)
 4. enhance log
 
